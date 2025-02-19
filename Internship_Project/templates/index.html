@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Response Time Monitor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #28a745;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .status-green::before {
+            content: "🟢";
+            margin-right: 5px;
+        }
+        .status-amber::before {
+            content: "🟡";
+            margin-right: 5px;
+        }
+        .status-red::before {
+            content: "🔴";
+            margin-right: 5px;
+        }
+        .status-error::before {
+            content: "❌";
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>URL Response Time Monitor</h1>
+    <label for="url">Enter URL:</label>
+    <input type="text" id="url" placeholder="https://www.example.com" required>
+
+    <label for="duration">Duration (seconds):</label>
+    <input type="number" id="duration" value="5" min="1" required>
+
+    <label for="interval">Interval (seconds):</label>
+    <input type="number" id="interval" value="1" min="1" required>
+
+    <button onclick="startMonitoring()">Start Monitoring</button>
+    <button onclick="stopMonitoring()" disabled>Stop Monitoring</button>
+
+    <table id="results">
+        <thead>
+        <tr>
+            <th>Request</th>
+            <th>Response Time</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let monitoringInterval;
+    let requestCount = 0;
+
+    function getRagStatus(responseTime) {
+        if (responseTime <= 1) return "Green";
+        if (responseTime <= 3) return "Amber";
+        return "Red";
+    }
+
+    async function monitorUrl(url, durationSec) {
+        const resultsBody = document.querySelector('#results tbody');
+
+        try {
+            const startTime = performance.now();
+            const response = await fetch(url, { method: 'GET', mode: 'no-cors' });
+            const endTime = performance.now();
+            const responseTime = (endTime - startTime) / 1000;
+            const ragStatus = getRagStatus(responseTime);
+
+            requestCount++;
+            const row = resultsBody.insertRow();
+            row.innerHTML = `
+                <td>Request ${requestCount}</td>
+                <td>${responseTime.toFixed(2)}s</td>
+                <td class="status-${ragStatus.toLowerCase()}">${ragStatus}</td>
+            `;
+        } catch (error) {
+            requestCount++;
+            const row = resultsBody.insertRow();
+            row.innerHTML = `
+                <td>Request ${requestCount}</td>
+                <td>Error</td>
+                <td class="status-error">Error</td>
+            `;
+        }
+    }
+
+    function startMonitoring() {
+        const url = document.getElementById('url').value;
+        const durationSec = parseInt(document.getElementById('duration').value);
+        const intervalSec = parseInt(document.getElementById('interval').value);
+
+        if (!url) {
+            alert("Please enter a URL.");
+            return;
+        }
+
+        if (monitoringInterval) {
+            clearInterval(monitoringInterval);
+        }
+
+        requestCount = 0;
+        document.querySelector('#results tbody').innerHTML = '';
+
+        monitoringInterval = setInterval(() => {
+            monitorUrl(url, durationSec);
+        }, intervalSec * 1000);
+
+        document.querySelector('button:first-of-type').disabled = true;
+        document.querySelector('button:last-of-type').disabled = false;
+    }
+
+    function stopMonitoring() {
+        clearInterval(monitoringInterval);
+        monitoringInterval = null;
+        document.querySelector('button:first-of-type').disabled = false;
+        document.querySelector('button:last-of-type').disabled = true;
+    }
+</script>
+</body>
+</html>
