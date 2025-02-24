@@ -32,20 +32,20 @@
         input[type="text"], input[type="number"] {
             width: 100%;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
         }
         button {
             padding: 10px 20px;
+            margin: 5px;
             background-color: #28a745;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
-            margin-right: 10px;
         }
         button:hover {
             background-color: #218838;
@@ -53,6 +53,12 @@
         button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
+        }
+        .clear-btn {
+            background-color: #dc3545;
+        }
+        .clear-btn:hover {
+            background-color: #c82333;
         }
         table {
             width: 100%;
@@ -68,22 +74,10 @@
             background-color: #f2f2f2;
             font-weight: bold;
         }
-        .status-green::before {
-            content: "🟢";
-            margin-right: 5px;
-        }
-        .status-amber::before {
-            content: "🟡";
-            margin-right: 5px;
-        }
-        .status-red::before {
-            content: "🔴";
-            margin-right: 5px;
-        }
-        .status-error::before {
-            content: "❌";
-            margin-right: 5px;
-        }
+        .status-green::before { content: "🟢"; margin-right: 5px; }
+        .status-amber::before { content: "🟡"; margin-right: 5px; }
+        .status-red::before { content: "🔴"; margin-right: 5px; }
+        .status-error::before { content: "❌"; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -100,6 +94,7 @@
 
     <button onclick="startMonitoring()">Start Monitoring</button>
     <button onclick="stopMonitoring()" disabled>Stop Monitoring</button>
+    <button class="clear-btn" onclick="clearResults()">Clear</button>
 
     <table id="results">
         <thead>
@@ -124,24 +119,23 @@
         return "Red";
     }
 
-    async function monitorUrl(url, durationSec) {
+    async function monitorUrl(url) {
         const resultsBody = document.querySelector('#results tbody');
 
         try {
             const startTime = performance.now();
-            const response = await fetch(url, { method: 'GET', mode: 'no-cors' });
-            const endTime = performance.now();
-            const responseTime = (endTime - startTime) / 1000;
+            await fetch(url, { method: 'GET', mode: 'no-cors' });
+            const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
             const ragStatus = getRagStatus(responseTime);
 
             requestCount++;
             const row = resultsBody.insertRow();
             row.innerHTML = `
                 <td>Request ${requestCount}</td>
-                <td>${responseTime.toFixed(2)}s</td>
+                <td>${responseTime}s</td>
                 <td class="status-${ragStatus.toLowerCase()}">${ragStatus}</td>
             `;
-        } catch (error) {
+        } catch {
             requestCount++;
             const row = resultsBody.insertRow();
             row.innerHTML = `
@@ -154,7 +148,6 @@
 
     function startMonitoring() {
         const url = document.getElementById('url').value;
-        const durationSec = parseInt(document.getElementById('duration').value);
         const intervalSec = parseInt(document.getElementById('interval').value);
 
         if (!url) {
@@ -162,26 +155,32 @@
             return;
         }
 
-        if (monitoringInterval) {
-            clearInterval(monitoringInterval);
-        }
+        if (monitoringInterval) clearInterval(monitoringInterval);
 
         requestCount = 0;
         document.querySelector('#results tbody').innerHTML = '';
 
         monitoringInterval = setInterval(() => {
-            monitorUrl(url, durationSec);
+            monitorUrl(url);
         }, intervalSec * 1000);
 
         document.querySelector('button:first-of-type').disabled = true;
-        document.querySelector('button:last-of-type').disabled = false;
+        document.querySelector('button:nth-of-type(2)').disabled = false;
     }
 
     function stopMonitoring() {
         clearInterval(monitoringInterval);
         monitoringInterval = null;
         document.querySelector('button:first-of-type').disabled = false;
-        document.querySelector('button:last-of-type').disabled = true;
+        document.querySelector('button:nth-of-type(2)').disabled = true;
+    }
+
+    function clearResults() {
+        stopMonitoring();
+        document.getElementById('url').value = "";
+        document.getElementById('duration').value = "5";
+        document.getElementById('interval').value = "1";
+        document.querySelector('#results tbody').innerHTML = '';
     }
 </script>
 </body>
